@@ -1,73 +1,65 @@
 #include "LoRa_functions.h"
 
-// Transmitting frequency
+// Transmitting frequency (seconds)
 float sendInterval = 1.0;
 // Spreading factor (6-12)
 int sf = 7;
 // Signal bandwidth (20.8e3, 62.5e3, 125e3, and 250e3)
 long sbw = 125000;
 
-SPIClass spiLoRa(FSPI);
-
 void setupLoRa() {
-  
-  Serial.println("LoRa Sender");
+  Serial.println("LoRa Sender (STM32)");
 
-  // Begin custom SPI
-  spiLoRa.begin(SCK, MISO, MOSI, SS);
+  // Use default SPI (SPI1 on Nucleo - D11=MOSI, D12=MISO, D13=SCK)
+  LoRa.setSPI(SPI);
+  LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO0);
 
-  // Setup LoRa transceiver module
-  LoRa.setSPI(spiLoRa);
-  LoRa.setPins(SS, RST, DIO0);
-
-  //915-938 for Australia
-  //863-870 or 433 for Sweden
-  while (!LoRa.begin(915E6)) {
+  // 915 MHz (Australia). Use 868E6 for EU, 433E6 for 433 MHz band
+  while (!LoRa.begin(868E6)) {
     Serial.println(".");
     delay(500);
   }
 
-  // Set spreading factor
   LoRa.setSpreadingFactor(sf);
-  // Set bandwidth
   LoRa.setSignalBandwidth(sbw);
-
-  // The sync word assures you don't get LoRa messages from other LoRa transceivers
-  // ranges from 0-0xFF
-  LoRa.setSyncWord(0xF3);
+  LoRa.setSyncWord(0xF3);  // Match with receiver
   Serial.println("LoRa Initializing OK!");
 }
 
-void sendLoRaData() {
+void sendLoRaTestMessage() {
+  static uint32_t counter = 0;
 
-    while(LoRa.beginPacket() == 0) {
-      Serial.println("Waiting for radio...");
-      delay(100);
-    }
+  if (!LoRa.beginPacket()) {
+    Serial.println("Waiting for radio...");
+    return;
+  }
 
-    LoRa.beginPacket();
+  LoRa.print("Hello LoRa #");
+  LoRa.print(counter++);
+  LoRa.endPacket();
+  Serial.println("Packet sent.");
+}
+
+void receiveLoRaMessage() {
+  // Check if a packet has been received
+  int packetSize = LoRa.parsePacket();
+  
+  if (packetSize) {
+    // Received a packet
+    Serial.print("Received packet (");
+    Serial.print(packetSize);
+    Serial.print(" bytes): ");
     
-    LoRa.print(velocity); LoRa.print(" ");
-    LoRa.print(distance_travelled); LoRa.print(" ");
-    LoRa.print(battery_volt); LoRa.print(" ");
-    LoRa.print(battery_current); LoRa.print(" ");
-    LoRa.print(battery_cell_LOW_volt); LoRa.print(" ");
-    LoRa.print(battery_cell_HIGH_volt); LoRa.print(" ");
-    LoRa.print(battery_cell_AVG_volt); LoRa.print(" ");
-    LoRa.print(battery_cell_LOW_temp); LoRa.print(" ");
-    LoRa.print(battery_cell_HIGH_temp); LoRa.print(" ");
-    LoRa.print(battery_cell_AVG_temp); LoRa.print(" ");
-    LoRa.print(battery_cell_ID_HIGH_temp); LoRa.print(" ");
-    LoRa.print(battery_cell_ID_LOW_temp); LoRa.print(" ");
-    LoRa.print(BMS_temp); LoRa.print(" ");
-    LoRa.print(motor_current); LoRa.print(" ");
-    LoRa.print(motor_temp); LoRa.print(" ");
-    LoRa.print(motor_controller_temp); LoRa.print(" ");
-    LoRa.print(MPPT1_watt); LoRa.print(" ");
-    LoRa.print(MPPT2_watt); LoRa.print(" ");
-    LoRa.print(MPPT3_watt); LoRa.print(" ");
-    LoRa.print(MPPT_total_watt);
-
-    LoRa.endPacket();
-    Serial.println("CAN sent with LoRa.");
+    // Read packet data
+    while (LoRa.available()) {
+      Serial.print((char)LoRa.read());
+    }
+    
+    // Print RSSI and SNR
+    Serial.print(" | RSSI: ");
+    Serial.print(LoRa.packetRssi());
+    Serial.print(" dBm | SNR: ");
+    Serial.print(LoRa.packetSnr());
+    Serial.println(" dB");
+  }
 }

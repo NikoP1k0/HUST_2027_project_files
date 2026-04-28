@@ -64,7 +64,7 @@ void loop() {
     } */
 
     // RSSI of packet
-    packetRSSI = LoRa.packetRssi();
+    packetRSSI = LoRa.packetRssi();   
     Serial.printf("RSSI: %.4f\n", packetRSSI);
 
     // Apply Kalman Filter

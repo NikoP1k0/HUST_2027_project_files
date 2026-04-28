@@ -5,9 +5,9 @@
 #include <LoRa.h>
 
 //define the pins used by the transceiver module
-#define SS 5
-#define RST 14
-#define DIO0 2
+#define SS 37
+#define RST 9
+#define DIO0 48
 
 // Variables
 extern long sbw; 
